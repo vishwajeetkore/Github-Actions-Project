@@ -1,4 +1,4 @@
-name: CICD Pipeline 
+name: Github Actions CICD Pipeline 
 
 on:
   push:
