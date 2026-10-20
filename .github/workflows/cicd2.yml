@@ -167,10 +167,6 @@ jobs:
         run: |
           kubectl apply -f ds2.yml
 
-      - name: Update Deployment Image to Latest Build
-        run: |
-          kubectl set image deployment/bankapp bankapp=${{ steps.login-ecr.outputs.registry }}/${{ vars.ECR_REPOSITORY_NAME }}:${{ github.run_number }}
-
-      - name: Verify Rollout
+        - name: Verify Rollout
         run: |
           kubectl rollout status deployment/bankapp --timeout=120s
