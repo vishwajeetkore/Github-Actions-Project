@@ -1,0 +1,124 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: bankapp-db-secret
+type: Opaque
+stringData:
+  db-password: "Test@123"
+  db-user: "root"
+  db-name: "bankappdb"
+---
+# Persistent Storage for MySQL on EKS
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mysql-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+---
+# MySQL Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mysql
+spec:
+  selector:
+    matchLabels:
+      app: mysql
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: mysql
+    spec:
+      containers:
+        - image: mysql:8
+          name: mysql
+          env:
+            - name: MYSQL_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: bankapp-db-secret
+                  key: db-password
+            - name: MYSQL_DATABASE
+              valueFrom:
+                secretKeyRef:
+                  name: bankapp-db-secret
+                  key: db-name
+          ports:
+            - containerPort: 3306
+              name: mysql
+          volumeMounts:
+            - name: mysql-persistent-storage
+              mountPath: /var/lib/mysql
+      volumes:
+        - name: mysql-persistent-storage
+          persistentVolumeClaim:
+            claimName: mysql-pvc
+---
+# MySQL Service (Internal Communication Only)
+apiVersion: v1
+kind: Service
+metadata:
+  name: mysql-service
+spec:
+  type: ClusterIP
+  ports:
+    - port: 3306
+      targetPort: 3306
+  selector:
+    app: mysql
+---
+# Java Application Deployment (Pulling from AWS ECR)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bankapp-deployment
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: bankapp
+  template:
+    metadata:
+      labels:
+        app: bankapp
+    spec:
+      containers:
+        - name: bankapp
+          # Replace with your exact ECR registry, region, and repository
+          image: 136589556435.dkr.ecr.us-east-1.amazonaws.com/bankapp:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+          env:
+            - name: SPRING_DATASOURCE_URL
+              value: jdbc:mysql://mysql-service:3306/bankappdb?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+            - name: SPRING_DATASOURCE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: bankapp-db-secret
+                  key: db-user
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: bankapp-db-secret
+                  key: db-password
+---
+# Bank Application Service (Public AWS LoadBalancer)
+apiVersion: v1
+kind: Service
+metadata:
+  name: bankapp-service
+spec:
+  type: LoadBalancer
+  ports:
+    - port: 80
+      targetPort: 8080
+  selector:
+    app: bankapp
