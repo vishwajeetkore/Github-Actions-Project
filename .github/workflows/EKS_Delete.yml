@@ -14,6 +14,6 @@ jobs:
       - name: Delete EKS Cluster
         run: |
           eksctl delete cluster \
-            --name voting1 \
+            --name voting \
             --region us-east-1 \
             --wait
