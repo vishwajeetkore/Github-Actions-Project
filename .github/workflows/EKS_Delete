@@ -1,0 +1,19 @@
+name: Delete EKS Cluster
+
+on:
+  workflow_dispatch:
+
+jobs:
+  delete-cluster:
+    runs-on: self-hosted
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Delete EKS Cluster
+        run: |
+          eksctl delete cluster \
+            --name voting1 \
+            --region us-east-1 \
+            --wait
