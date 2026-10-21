@@ -14,7 +14,7 @@ jobs:
       - name: Create EKS Cluster
         run: |
           eksctl create cluster \
-            --name voting1 \
+            --name voting \
             --region us-east-1 \
             --node-type t3.medium \
             --nodes 2 \
